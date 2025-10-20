@@ -1,2 +1,4 @@
 # unpeuniche.github.io
-un peu niche©
+
+My homepage on GitHub.  
+I love ☕
