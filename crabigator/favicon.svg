@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Green crab</title>
+  <defs>
+    <filter id="green" color-interpolation-filters="sRGB">
+      <feColorMatrix values="0.04 0.04 0.04 0 0.01  0.14 0.14 0.14 0 0.18  0.06 0.06 0.06 0 0.05  0 0 0 1 0" />
+    </filter>
+  </defs>
+  <text x="50" y="78" text-anchor="middle" font-size="78" filter="url(#green)">🦀</text>
+</svg>

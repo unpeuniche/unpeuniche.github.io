@@ -1,0 +1,72 @@
+# Crabigator - WaniKani Reverse Flashcards
+
+A minimal browser app for practising writing kanji and vocabulary from their English meanings (the reverse of WaniKani's default review direction).
+
+## What it does
+
+- Fetches your started kanji/vocabulary directly from the WaniKani API using your personal token.
+- Displays a random meaning (primary + alternatives) on the front of a flip card.
+- You write the Japanese offline, then click the card to reveal the answer: characters, readings, meanings, a looping kanji stroke-order animation, and a link to the WaniKani subject page.
+- Supports a "no repeat until exhausted" cycle so every item is seen before anything repeats.
+
+## Setup
+
+### On GitHub Pages
+
+Just open the app in your browser:
+1. Go to the Crabigator page on GitHub Pages
+2. Open the **Setup** panel (eye icon)
+3. Paste your WaniKani v2 API token and click **Save Token**  
+   Get your token at: https://www.wanikani.com/settings/personal_access_tokens
+4. Click **Reload Deck** to fetch your items from the API (first load takes 10-30 s depending on your level). Results are cached locally.
+5. Use **Reset List** to restore the cached deck without an API call and reset the cycle counter.
+
+### Locally
+
+If you want to run this locally without GitHub Pages:
+
+```bash
+python -m http.server 8080
+```
+
+Then open `http://localhost:8080` in your browser and follow steps 2-5 above.
+
+## Controls
+
+| Action | How |
+|---|---|
+| Draw next card | **Next Card** button or **N** |
+| Flip card | Click the card, **Space**, or **Enter** |
+| Close info popup | x button, click backdrop, or **Escape** |
+
+## Filters (inside Setup)
+
+| Filter | Effect |
+|---|---|
+| Item Type | Kanji only, Vocabulary only, or both |
+| Level Range | Auto-capped to your current WaniKani level; adjustable |
+| No repeat | Cycle through all items before repeating |
+| Reset List | Reload from local cache and reset the cycle counter |
+
+## Card colours
+
+Colours match the WaniKani palette:
+
+| Colour | Type |
+|---|---|
+| Pink `#ff00aa` border | Kanji front |
+| Purple `#aa00ff` border | Vocabulary front |
+| Solid pink `#e2007d` back | Kanji answer |
+| Solid purple `#8800cc` back | Vocabulary answer |
+
+## Data & privacy
+
+- Your API token is stored only in `localStorage` and sent only to `api.wanikani.com`.
+- The deck is cached in `localStorage` under the key `wk_reverse_cache`.
+- Kanji and vocabulary reveals fetch matching public SVGs from the KanjiVG repository through jsDelivr; each request contains only a kanji's Unicode filename and never includes your token or deck.
+
+Stroke path data is provided by [KanjiVG](https://kanjivg.tagaini.net/) under the Creative Commons Attribution-Share Alike 3.0 license.
+
+---
+
+**AI disclosure:** This application was designed and built with the assistance of Claude Sonnet. No WaniKani study content is reproduced; all subject data is fetched live from the official API using your personal token.
