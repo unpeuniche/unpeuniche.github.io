@@ -15,5 +15,3 @@ A minimal browser app for practising writing kanji and vocabulary from their Eng
 - Stroke-order animations for kanji
 - Configurable level range and item type filters
 - All data stored locally in your browser
-
-[Open Crabigator →](crabigator/)

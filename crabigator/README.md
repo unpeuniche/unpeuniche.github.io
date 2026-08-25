@@ -69,4 +69,4 @@ Stroke path data is provided by [KanjiVG](https://kanjivg.tagaini.net/) under th
 
 ---
 
-**AI disclosure:** This application was designed and built with the assistance of Claude Sonnet. No WaniKani study content is reproduced; all subject data is fetched live from the official API using your personal token.
+**⚠️ AI disclosure:** I used Claude Sonnet to help me develop this small application. Part of me is ashamed, part of me is happy with the result. Idk, I let you judge. No WaniKani study content is reproduced, all subject data is fetched live from the official API using your personal token.
