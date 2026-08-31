@@ -13,13 +13,14 @@
   --reveal-row-gap: 0.5rem;
   --reveal-kanji-diagram-gap: 1rem;
   --reveal-diagram-gap: 0.4rem;
-  --reveal-kanji-size-min: 3rem;
+  --reveal-kanji-size-min: 4.5rem;
   --reveal-kanji-size-fluid: 10vw;
   --reveal-kanji-size-max: 5.5rem;
   --reveal-diagram-size-min: 3.25rem;
   --reveal-diagram-row-width: 12rem;
   --reveal-diagram-size-max: 6rem;
   --reveal-pronunciation-size: 1.8rem;
+  --reveal-pronunciation-size-kanji: 1.3rem;
   --reveal-meaning-size: 1rem;
   --reveal-alt-meaning-size: 0.9rem;
   --reveal-level-size: 0.8rem;
@@ -399,6 +400,11 @@ button.ghost {
   font-weight: 600;
 }
 
+.flashcard.kanji .flashcard-back .readings {
+  font-size: var(--reveal-pronunciation-size-kanji);
+  line-height: 1.4;
+}
+
 .flashcard-back .all-meanings {
   color: rgba(255, 255, 255, 0.9);
   font-size: var(--reveal-meaning-size);
@@ -678,7 +684,9 @@ button.ghost {
   }
 
   #apiToken {
-    min-width: calc(100% - 4px);
+    min-width: calc(100% - 8px);
+    max-width: calc(100% - 8px);
+    margin-left: 4px;
   }
 
   .answer-kanji-row {
