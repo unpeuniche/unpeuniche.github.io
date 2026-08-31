@@ -653,7 +653,7 @@ button.ghost {
   }
 
   .card-panel {
-    min-height: 536px;
+    min-height: 440px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -663,7 +663,11 @@ button.ghost {
   }
 
   .flashcard {
-    height: 488px;
+    height: 400px;
+  }
+
+  .judge-row {
+    margin-top: 0.5rem;
   }
 }
 

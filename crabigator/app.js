@@ -238,7 +238,14 @@ function pickNextCard() {
   el.promptPrimary.textContent = card.primaryMeaning;
   const alts = card.meanings.filter((m) => m !== card.primaryMeaning);
   el.promptAlternatives.textContent = alts.length > 0 ? `(${alts.join(", ")})` : "";
+
+  // drop the flip instantly (no transition) so it doesn't fight with the draw-pop animation below
+  const flashcardInner = el.flashcard.querySelector(".flashcard-inner");
+  flashcardInner.style.transition = "none";
   el.flashcard.classList.remove("is-flipped", "kanji", "vocabulary");
+  void flashcardInner.offsetWidth;
+  flashcardInner.style.transition = "";
+
   el.flashcard.classList.add(card.type);
 
   // restart the draw animation even if it's already mid-play from a fast previous draw
