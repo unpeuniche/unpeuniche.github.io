@@ -678,7 +678,7 @@ button.ghost {
   }
 
   #apiToken {
-    min-width: 100%;
+    min-width: calc(100% - 4px);
   }
 
   .answer-kanji-row {
@@ -690,11 +690,11 @@ button.ghost {
   }
 
   .card-panel {
-    min-height: 558px;
+    min-height: 500px;
   }
 
   .flashcard {
-    height: 458px;
+    height: 400px;
   }
 }
 
