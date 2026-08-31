@@ -13,6 +13,7 @@ const state = {
   filteredDeck: [],
   unusedIndices: [],
   currentCard: null,
+  currentIndex: null,
   cacheLabel: "",
 };
 
@@ -25,7 +26,8 @@ const el = {
   maxLevel: document.getElementById("maxLevel"),
   noRepeat: document.getElementById("noRepeat"),
   useCacheBtn: document.getElementById("useCacheBtn"),
-  newCardBtn: document.getElementById("newCardBtn"),
+  markCorrectBtn: document.getElementById("markCorrectBtn"),
+  markWrongBtn: document.getElementById("markWrongBtn"),
   status: document.getElementById("status"),
   flashcard: document.getElementById("flashcard"),
   setupToggle: document.getElementById("setupToggle"),
@@ -178,7 +180,6 @@ function applyFilters() {
   }
 
   updateDeckCount();
-  el.newCardBtn.disabled = state.filteredDeck.length === 0;
 }
 
 function updateDeckCount() {
@@ -199,12 +200,15 @@ function updateDeckCount() {
 
 function clearCardView(message) {
   state.currentCard = null;
+  state.currentIndex = null;
   clearStrokeOrder();
-  el.promptPrimary.textContent = message ?? (state.deck.length === 0 ? "Reload your deck to start." : "Pick Next Card to begin.");
+  el.promptPrimary.textContent = message ?? (state.deck.length === 0 ? "Reload your deck to start." : "Click the deck to begin.");
   el.promptAlternatives.textContent = "";
   el.flashcard.classList.remove("is-flipped", "kanji", "vocabulary");
   el.cardTypeTag.classList.add("hidden");
   el.cardTypeTag.classList.remove("kanji", "vocabulary");
+  el.markCorrectBtn.disabled = true;
+  el.markWrongBtn.disabled = true;
 }
 
 function pickNextCard() {
@@ -228,6 +232,7 @@ function pickNextCard() {
   const card = state.filteredDeck[idx];
 
   state.currentCard = card;
+  state.currentIndex = idx;
   clearStrokeOrder();
 
   el.promptPrimary.textContent = card.primaryMeaning;
@@ -236,11 +241,34 @@ function pickNextCard() {
   el.flashcard.classList.remove("is-flipped", "kanji", "vocabulary");
   el.flashcard.classList.add(card.type);
 
+  // restart the draw animation even if it's already mid-play from a fast previous draw
+  el.flashcard.classList.remove("card-drawn");
+  void el.flashcard.offsetWidth;
+  el.flashcard.classList.add("card-drawn");
+
   el.cardTypeTag.textContent = card.type;
   el.cardTypeTag.classList.remove("hidden", "kanji", "vocabulary");
   el.cardTypeTag.classList.add(card.type);
 
+  el.markCorrectBtn.disabled = false;
+  el.markWrongBtn.disabled = false;
+
   updateDeckCount();
+}
+
+function markCorrect() {
+  if (!state.currentCard) return;
+  // card was already removed from the queue when drawn, so nothing to requeue
+  pickNextCard();
+}
+
+function markWrong() {
+  if (!state.currentCard) return;
+  if (el.noRepeat.checked && Number.isInteger(state.currentIndex) && !state.unusedIndices.includes(state.currentIndex)) {
+    state.unusedIndices.push(state.currentIndex);
+    savePersistentQueue();
+  }
+  pickNextCard();
 }
 
 function getQueueFilterKey() {
@@ -421,6 +449,14 @@ async function renderStrokeOrder(characters) {
   animateStrokePaths(diagrams.flatMap((diagram) => diagram.paths));
 }
 
+function handleCardActivate() {
+  if (state.currentCard) {
+    revealCard();
+  } else {
+    pickNextCard();
+  }
+}
+
 function revealCard() {
   if (!state.currentCard) return;
 
@@ -573,29 +609,18 @@ function restoreCachedDeck(cached) {
   clearCardView();
 }
 
-function useCachedDeck() {
-  try {
-    restoreCachedDeck(loadDeckCache());
-  } catch (error) {
-    setStatus(`${error.message}`, "warn");
-  }
-}
-
 function attachEvents() {
   el.saveTokenBtn.addEventListener("click", saveToken);
   el.clearTokenBtn.addEventListener("click", clearToken);
   el.useCacheBtn.addEventListener("click", resetCurrentQueue);
-  el.newCardBtn.addEventListener("click", pickNextCard);
+  el.markCorrectBtn.addEventListener("click", markCorrect);
+  el.markWrongBtn.addEventListener("click", markWrong);
   document.getElementById("reloadApiBtn").addEventListener("click", loadFromApi);
-  el.flashcard.addEventListener("click", revealCard);
-  el.flashcard.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-    pickNextCard();
-  });
+  el.flashcard.addEventListener("click", handleCardActivate);
   el.flashcard.addEventListener("keydown", (event) => {
-    if (event.code === "Space" || event.code === "Enter") {
+    if (event.code === "Enter") {
       event.preventDefault();
-      revealCard();
+      handleCardActivate();
     }
   });
 
@@ -633,8 +658,6 @@ function attachEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.target && ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
     if (event.code === "Escape") { el.modalOverlay.style.display = "none"; return; }
-    if (event.code === "Space") { event.preventDefault(); revealCard(); }
-    if (event.key.toLowerCase() === "n") { event.preventDefault(); pickNextCard(); }
   });
 }
 

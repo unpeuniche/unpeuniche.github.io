@@ -21,12 +21,11 @@
     <main class="app-shell">
       <header class="hero">
         <div class="hero-top">
-          <p class="eyebrow">WaniKani Reverse Flashcards</p>
+          <h1>Crabigator</h1>
           <button class="info-btn" id="infoBtn" type="button" aria-label="About this app">ⓘ</button>
         </div>
-        <h1>Crabigator</h1>
         <p class="subtitle">
-          Random kanji and vocabulary for writing practice.
+          WaniKani flashcards for writing practice.
         </p>
       </header>
 
@@ -85,7 +84,6 @@
 
       <div class="new-card-row">
         <button id="reloadApiBtn" type="button" class="ghost">Reload Deck</button>
-        <button id="newCardBtn" type="button" disabled>Next Card</button>
       </div>
 
       <section class="panel card-panel" aria-label="Flashcard">
@@ -125,7 +123,16 @@
           </div>
         </article>
 
-        <p class="hint">Click or Space = flip &middot; Right-click or N = next card</p>
+        <div class="judge-row">
+          <button id="markCorrectBtn" type="button" class="judge-btn correct" disabled aria-label="Could write it, remove from list">
+            <span aria-hidden="true">O</span>
+          </button>
+          <button id="markWrongBtn" type="button" class="judge-btn wrong" disabled aria-label="Could not write it, keep for review">
+            <span aria-hidden="true">X</span>
+          </button>
+        </div>
+
+        <p class="hint">Click = show result &middot; O/X = evaluate &amp; next card</p>
       </section>
     </main>
 
