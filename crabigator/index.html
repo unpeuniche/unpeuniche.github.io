@@ -58,21 +58,31 @@
             <option value="vocabulary">Vocabulary only</option>
           </select>
 
+          <label for="gradeFilter">Jōyō Grade</label>
+          <select id="gradeFilter">
+            <option value="all" selected>All Grades</option>
+            <option value="1">Grade 1</option>
+            <option value="2">Grade 2</option>
+            <option value="3">Grade 3</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+            <option value="7">Grade 7+</option>
+          </select>
+          <div class="filter-row-break" aria-hidden="true"></div>
+
           <label for="minLevel">Level Range</label>
           <div class="range-wrap">
             <input id="minLevel" type="number" min="1" max="60" value="1" />
             <span>to</span>
             <input id="maxLevel" type="number" min="1" max="60" value="60" />
           </div>
-
-        </div>
-
-        <div class="row actions-row">
           <label class="checkbox">
             <input id="noRepeat" type="checkbox" checked />
             No repeat until exhausted list
           </label>
           <button id="useCacheBtn" type="button" class="ghost">Reset List</button>
+
         </div>
 
         <p id="cacheInfo" class="cache-info"></p>
@@ -136,6 +146,6 @@
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20261110-7"></script>
   </body>
 </html>

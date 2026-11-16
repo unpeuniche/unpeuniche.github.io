@@ -45,6 +45,7 @@ Then open `http://localhost:8080` in your browser and follow steps 2-5 above.
 | Filter | Effect |
 |---|---|
 | Item Type | Kanji only, Vocabulary only, or both |
+| Jōyō Grade | All Grades by default, or Grades 1-6 or Grade 7+. Vocabulary uses its highest-grade Jōyō kanji; kana-only or non-Jōyō-only words have no grade and appear only under All Grades. |
 | Level Range | Auto-capped to your current WaniKani level; adjustable |
 | No repeat | Cycle through all items before repeating |
 | Reset List | Reset the cycle counter for the current filters (no API call needed) |
@@ -65,10 +66,10 @@ Colours match the WaniKani palette:
 - Your API token is stored only in `localStorage` and sent only to `api.wanikani.com`.
 - The deck is cached in `localStorage` under the key `wk_reverse_cache`.
 - The "no repeat" review queue (which items are left before the cycle resets) is stored in `localStorage` under the key `wk_reverse_queues`.
+- Jōyō grade assignments are bundled in `joyo-grades.json` from the current [grade-by-grade kanji allocation table](https://ja.wikipedia.org/wiki/%E5%AD%A6%E5%B9%B4%E5%88%A5%E6%BC%A2%E5%AD%97%E9%85%8D%E5%BD%93%E8%A1%A8) and [Jōyō kanji list](https://en.wikipedia.org/wiki/List_of_j%C5%8Dy%C5%8D_kanji). Character assignments were cross-checked against both tables. Grades 1-6 contain 1,026 kanji; Grade 7+ contains the remaining 1,110 Jōyō kanji. Non-Jōyō-only words have no grade and are included only under All Grades.
 - Kanji and vocabulary reveals fetch matching public SVGs from the KanjiVG repository through jsDelivr; each request contains only a kanji's Unicode filename and never includes your token or deck.
 
 Stroke path data is provided by [KanjiVG](https://kanjivg.tagaini.net/) under the Creative Commons Attribution-Share Alike 3.0 license.
-
 ---
 
 **⚠️ AI disclosure:** I used Claude Sonnet to help me develop this small application. Part of me is ashamed, part of me is happy with the result. Idk, I let you judge. No WaniKani study content is reproduced, all subject data is fetched live from the official API using your personal token.

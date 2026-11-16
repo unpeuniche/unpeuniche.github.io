@@ -5,6 +5,7 @@ const STORAGE_TOKEN_KEY = "wk_reverse_token";
 const STORAGE_CACHE_KEY = "wk_reverse_cache";
 const STORAGE_QUEUE_KEY = "wk_reverse_queues";
 const KANJIVG_BASE_URL = "https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji";
+const JOYO_GRADES_URL = "joyo-grades.json";
 
 const kanjiSvgCache = new Map();
 
@@ -15,6 +16,8 @@ const state = {
   currentCard: null,
   currentIndex: null,
   cacheLabel: "",
+  kanjiGrades: null,
+  kanjiGradesPromise: null,
 };
 
 const el = {
@@ -22,6 +25,7 @@ const el = {
   saveTokenBtn: document.getElementById("saveTokenBtn"),
   clearTokenBtn: document.getElementById("clearTokenBtn"),
   typeFilter: document.getElementById("typeFilter"),
+  gradeFilter: document.getElementById("gradeFilter"),
   minLevel: document.getElementById("minLevel"),
   maxLevel: document.getElementById("maxLevel"),
   noRepeat: document.getElementById("noRepeat"),
@@ -167,12 +171,15 @@ function normalizeLevelRange() {
 
 function applyFilters() {
   const typeFilter = el.typeFilter.value;
+  const gradeFilter = el.gradeFilter.value;
   const { min, max } = normalizeLevelRange();
 
   state.filteredDeck = state.deck.filter((card) => {
     const typeMatch = typeFilter === "both" ? true : card.type === typeFilter;
+    const cardGrade = getCardGrade(card.characters);
+    const gradeMatch = gradeFilter === "all" || cardGrade === Number(gradeFilter);
     const levelMatch = card.level >= min && card.level <= max;
-    return typeMatch && levelMatch;
+    return typeMatch && gradeMatch && levelMatch;
   });
 
   if (el.noRepeat.checked) {
@@ -182,12 +189,95 @@ function applyFilters() {
   updateDeckCount();
 }
 
+function getCardGrade(characters) {
+  if (!state.kanjiGrades) return null;
+  const grades = [...String(characters || "")]
+    .map((character) => state.kanjiGrades[character])
+    .filter(Number.isInteger);
+  return grades.length > 0 ? Math.max(...grades) : null;
+}
+
+function updateAnswerLevel(card) {
+  const grade = getCardGrade(card.characters);
+  const gradeLabel = grade === null
+    ? "Ungraded"
+    : `Grade ${grade === 7 ? "7+" : grade}`;
+  el.answerLevel.textContent = `Level ${card.level} · ${gradeLabel}`;
+}
+
+async function loadKanjiGrades() {
+  if (state.kanjiGrades) return state.kanjiGrades;
+  if (state.kanjiGradesPromise) return state.kanjiGradesPromise;
+
+  state.kanjiGradesPromise = (async () => {
+    const response = await fetch(JOYO_GRADES_URL);
+    if (!response.ok) throw new Error(`Jōyō grade data returned ${response.status}`);
+    const groups = await response.json();
+    const grades = {};
+    let characterCount = 0;
+
+    for (const [sourceGrade, characters] of Object.entries(groups)) {
+      const grade = sourceGrade === "7+" ? 7 : Number(sourceGrade);
+      if (!Number.isInteger(grade) || typeof characters !== "string") {
+        throw new Error("Jōyō grade data format is invalid.");
+      }
+      for (const character of characters) {
+        grades[character] = grade;
+        characterCount += 1;
+      }
+    }
+
+    if (characterCount !== 2136 || Object.keys(grades).length !== 2136) {
+      throw new Error("Jōyō grade data does not contain 2,136 unique characters.");
+    }
+
+    state.kanjiGrades = grades;
+    return grades;
+  })().catch((error) => {
+    state.kanjiGradesPromise = null;
+    throw error;
+  });
+
+  return state.kanjiGradesPromise;
+}
+
+async function handleFilterChange() {
+  clearCardView();
+  if (el.gradeFilter.value !== "all" && !state.kanjiGrades) {
+    setStatus("Loading Jōyō grade data...");
+    try {
+      await loadKanjiGrades();
+    } catch (error) {
+      state.filteredDeck = [];
+      state.unusedIndices = [];
+      updateDeckCount();
+      clearCardView("Jōyō grade data could not be loaded.");
+      setStatus(`Failed to load Jōyō grade data: ${error.message}`, "err");
+      return;
+    }
+  }
+  applyFilters();
+}
+
 function updateDeckCount() {
   el.deckCount.textContent = state.currentCard ? "" : "Grab your pen and paper!";
   if (!el.cacheInfo || state.deck.length === 0) return;
   const total = state.filteredDeck.length;
   const typeLabel = el.typeFilter.options[el.typeFilter.selectedIndex].text;
-  const parts = [typeLabel, `Levels ${el.minLevel.value}-${el.maxLevel.value}`, `${total} items`];
+  const gradeLabel = el.gradeFilter.options[el.gradeFilter.selectedIndex].text;
+  const gradeValue = Number(el.gradeFilter.value);
+  const gradeTotal = state.kanjiGrades
+    ? Object.values(state.kanjiGrades).filter((grade) => grade === gradeValue).length
+    : 0;
+  let itemCount = `${total} items`;
+  if (el.typeFilter.value === "kanji") {
+    if (el.gradeFilter.value === "all") {
+      itemCount = `${total}/2136 kanji`;
+    } else if (gradeTotal > 0) {
+      itemCount = `${total}/${gradeTotal} kanji`;
+    }
+  }
+  const parts = [typeLabel, `Jōyō Grade: ${gradeLabel}`, `Levels ${el.minLevel.value}-${el.maxLevel.value}`, itemCount];
   if (el.noRepeat.checked) parts.push(`${state.unusedIndices.length} remaining`);
   if (state.cacheLabel) parts.push(`Loaded ${state.cacheLabel}`);
   el.cacheInfo.textContent = "Current list: " + parts.join(" \u00b7 ");
@@ -221,10 +311,11 @@ function pickNextCard() {
   if (el.noRepeat.checked) {
     if (state.unusedIndices.length === 0) {
       state.unusedIndices = buildUnusedIndices(state.filteredDeck.length);
+      savePersistentQueue();
     }
-    const randomPos = Math.floor(Math.random() * state.unusedIndices.length);
-    idx = state.unusedIndices.splice(randomPos, 1)[0];
-    savePersistentQueue();
+    const availableIndices = state.unusedIndices.filter((index) => index !== state.currentIndex);
+    const candidates = availableIndices.length > 0 ? availableIndices : state.unusedIndices;
+    idx = candidates[Math.floor(Math.random() * candidates.length)];
   } else {
     idx = Math.floor(Math.random() * state.filteredDeck.length);
   }
@@ -265,22 +356,23 @@ function pickNextCard() {
 
 function markCorrect() {
   if (!state.currentCard) return;
-  // card was already removed from the queue when drawn, so nothing to requeue
+  if (el.noRepeat.checked && Number.isInteger(state.currentIndex)) {
+    const queueIndex = state.unusedIndices.indexOf(state.currentIndex);
+    if (queueIndex !== -1) state.unusedIndices.splice(queueIndex, 1);
+    savePersistentQueue();
+  }
   pickNextCard();
 }
 
 function markWrong() {
   if (!state.currentCard) return;
-  if (el.noRepeat.checked && Number.isInteger(state.currentIndex) && !state.unusedIndices.includes(state.currentIndex)) {
-    state.unusedIndices.push(state.currentIndex);
-    savePersistentQueue();
-  }
   pickNextCard();
 }
 
 function getQueueFilterKey() {
   return JSON.stringify({
     type: el.typeFilter.value,
+    grade: el.gradeFilter.value,
     min: el.minLevel.value,
     max: el.maxLevel.value,
   });
@@ -486,7 +578,11 @@ function revealCard() {
   el.answerMeanings.textContent = card.primaryMeaning;
   const altMeanings = card.meanings.filter((m) => m !== card.primaryMeaning);
   el.answerAltMeanings.textContent = altMeanings.length > 0 ? `(${altMeanings.join(", ")})` : "";
-  el.answerLevel.textContent = `Level ${card.level}`;
+  if (state.kanjiGrades) {
+    updateAnswerLevel(card);
+  } else {
+    el.answerLevel.textContent = `Level ${card.level} · Loading grade...`;
+  }
 
   if (card.documentUrl) {
     el.answerDocLink.href = card.documentUrl;
@@ -496,6 +592,20 @@ function revealCard() {
   }
 
   el.flashcard.classList.toggle("is-flipped");
+
+  if (!state.kanjiGrades) {
+    loadKanjiGrades()
+      .then(() => {
+        if (state.currentCard === card && el.flashcard.classList.contains("is-flipped")) {
+          updateAnswerLevel(card);
+        }
+      })
+      .catch(() => {
+        if (state.currentCard === card && el.flashcard.classList.contains("is-flipped")) {
+          el.answerLevel.textContent = `Level ${card.level} · Grade unavailable`;
+        }
+      });
+  }
 }
 
 function saveToken() {
@@ -658,8 +768,8 @@ function attachEvents() {
     if (e.target === el.modalOverlay) el.modalOverlay.style.display = "none";
   });
 
-  for (const id of ["typeFilter", "minLevel", "maxLevel", "noRepeat"]) {
-    document.getElementById(id).addEventListener("change", () => { applyFilters(); clearCardView(); });
+  for (const id of ["typeFilter", "gradeFilter", "minLevel", "maxLevel", "noRepeat"]) {
+    document.getElementById(id).addEventListener("change", handleFilterChange);
   }
 
   document.addEventListener("keydown", (event) => {
