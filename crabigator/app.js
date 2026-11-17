@@ -280,7 +280,7 @@ function updateDeckCount() {
       itemCount = `${total}/${gradeTotal} kanji`;
     }
   }
-  const parts = [typeLabel, `Jōyō Grade: ${gradeLabel}`, `Levels ${el.minLevel.value}-${el.maxLevel.value}`, itemCount];
+  const parts = [typeLabel, gradeLabel, `Levels ${el.minLevel.value}-${el.maxLevel.value}`, itemCount];
   if (el.noRepeat.checked) parts.push(`${state.unusedIndices.length}/${total} remaining`);
   if (state.cacheLabel) parts.push(`Loaded ${state.cacheLabel}`);
   el.cacheInfo.textContent = "Current list: " + parts.join(" \u00b7 ");
@@ -747,7 +747,7 @@ async function loadFromApi() {
     updateDeckCount();
 
     setStatus(
-      `Synced ${deck.length} started items for ${user.data.username} (level ${currentLevel}). Review progress preserved.`,
+      `Synced ${deck.length} started items for ${user.data.username} (level ${currentLevel}).`,
       "ok",
     );
   } catch (error) {
