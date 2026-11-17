@@ -483,18 +483,25 @@ button.ghost {
 
 .new-card-row {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 2rem;
+  min-height: 2.5rem;
 }
 
 .actions-row .checkbox {
   font-size: inherit;
 }
 
+.deck-actions-row {
+  flex-wrap: nowrap;
+}
+
 .cache-info {
+  width: 100%;
   margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
+  text-align: center;
 }
 
 .hint {
@@ -703,6 +710,11 @@ button.ghost {
 
   .card-panel {
     min-height: 500px;
+  }
+
+  .cache-info {
+    font-size: 0.7rem;
+    line-height: 1.2;
   }
 
   .flashcard {

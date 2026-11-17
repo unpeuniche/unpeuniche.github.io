@@ -6,7 +6,7 @@
     <title>Crabigator</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260813-1" />
+    <link rel="stylesheet" href="styles.css?v=20261116-2" />
   </head>
   <body>
     <div class="modal-overlay" id="modalOverlay">
@@ -82,11 +82,12 @@
             <input id="noRepeat" type="checkbox" checked />
             No repeat until exhausted list
           </label>
-          <button id="useCacheBtn" type="button" class="ghost">Reset List</button>
-
         </div>
 
-        <p id="cacheInfo" class="cache-info"></p>
+        <div class="row deck-actions-row">
+          <button id="useCacheBtn" type="button" class="ghost" title="Restart the current filtered list without fetching data">Reset List</button>
+          <button id="reloadApiBtn" type="button" class="ghost" title="Sync with WaniKani while preserving review progress">Reload Deck</button>
+        </div>
 
         </div>
       </section>
@@ -94,7 +95,7 @@
       <p id="status" class="status" role="status">Waiting for token.</p>
 
       <div class="new-card-row">
-        <button id="reloadApiBtn" type="button" class="ghost">Reload Deck</button>
+        <p id="cacheInfo" class="cache-info"></p>
       </div>
 
       <section class="panel card-panel" aria-label="Flashcard">
@@ -147,6 +148,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20261110-7"></script>
+    <script src="app.js?v=20261117-1"></script>
   </body>
 </html>

@@ -19,8 +19,10 @@ Just open the app in your browser:
 2. Open the **Setup** panel (eye icon)
 3. Paste your WaniKani v2 API token and click **Save Token**  
    Get your token at: https://www.wanikani.com/settings/personal_access_tokens
-4. Click **Reload Deck** to fetch your items from the API (first load takes 10-30 s depending on your level). Results are cached locally.
-5. Use **Reset List** to reset the cycle counter for the currently loaded deck without another API call.
+4. Saving your token starts a sync if needed (first load takes 10-30 s depending on your level). Results are cached locally. **Reload Deck** inside Setup lets you sync manually at any time.
+5. Use **Reset List** inside Setup to restart only the currently filtered list without another API call.
+
+The app checks for a daily sync when opened or brought back into view. If the cached deck is from a previous local calendar day, it fetches fresh WaniKani data. Syncing preserves completed and remaining items in every saved list, adds matching new items to the remaining queue, and removes unavailable items. Existing level filters and the current card are kept when possible. A failed sync leaves the cached deck and progress available; use **Reload Deck** to retry, or reopen the app. Automatic attempts are limited to once per day per page session.
 
 ### Locally
 
@@ -49,6 +51,15 @@ Then open `http://localhost:8080` in your browser and follow steps 2-5 above.
 | Level Range | Auto-capped to your current WaniKani level; adjustable |
 | No repeat | Cycle through all items before repeating |
 | Reset List | Reset the cycle counter for the current filters (no API call needed) |
+| Reload Deck | Sync with WaniKani without restarting saved lists |
+
+## Tests
+
+Run the queue and daily-sync regression tests with Node.js:
+
+```bash
+node --test crabigator/app.test.cjs
+```
 
 ## Card colours
 

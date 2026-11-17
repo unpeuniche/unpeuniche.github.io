@@ -16,6 +16,9 @@ const state = {
   currentCard: null,
   currentIndex: null,
   cacheLabel: "",
+  lastSyncedAt: null,
+  syncInProgress: false,
+  lastAutoSyncDay: "",
   kanjiGrades: null,
   kanjiGradesPromise: null,
 };
@@ -261,7 +264,7 @@ async function handleFilterChange() {
 
 function updateDeckCount() {
   el.deckCount.textContent = state.currentCard ? "" : "Grab your pen and paper!";
-  if (!el.cacheInfo || state.deck.length === 0) return;
+  if (!el.cacheInfo || (state.deck.length === 0 && !state.cacheLabel)) return;
   const total = state.filteredDeck.length;
   const typeLabel = el.typeFilter.options[el.typeFilter.selectedIndex].text;
   const gradeLabel = el.gradeFilter.options[el.gradeFilter.selectedIndex].text;
@@ -278,14 +281,16 @@ function updateDeckCount() {
     }
   }
   const parts = [typeLabel, `Jōyō Grade: ${gradeLabel}`, `Levels ${el.minLevel.value}-${el.maxLevel.value}`, itemCount];
-  if (el.noRepeat.checked) parts.push(`${state.unusedIndices.length} remaining`);
+  if (el.noRepeat.checked) parts.push(`${state.unusedIndices.length}/${total} remaining`);
   if (state.cacheLabel) parts.push(`Loaded ${state.cacheLabel}`);
   el.cacheInfo.textContent = "Current list: " + parts.join(" \u00b7 ");
-  // expand container silently to fit newly added text
-  if (el.setupBody.dataset.collapsed !== "true") {
-    el.setupBody.style.transition = "none";
-    el.setupBody.style.maxHeight = el.setupBody.scrollHeight + "px";
-  }
+}
+
+function formatCacheDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
 }
 
 function clearCardView(message) {
@@ -397,19 +402,31 @@ function loadPersistentQueues() {
 function savePersistentQueue() {
   if (state.filteredDeck.length === 0) return;
 
-  const saved = loadPersistentQueues();
-  const queues = saved && JSON.stringify(saved.deckIds) === JSON.stringify(getDeckIds())
-    ? saved.queues
-    : {};
+  const queues = reconcilePersistentQueues();
   queues[getQueueFilterKey()] = state.unusedIndices.map((index) => state.filteredDeck[index].id);
   localStorage.setItem(STORAGE_QUEUE_KEY, JSON.stringify({ deckIds: getDeckIds(), queues }));
 }
 
-function restorePersistentQueue() {
+function reconcilePersistentQueues() {
   const saved = loadPersistentQueues();
-  if (!saved || JSON.stringify(saved.deckIds) !== JSON.stringify(getDeckIds())) return null;
+  if (!saved) return {};
 
-  const unusedIds = saved.queues[getQueueFilterKey()];
+  const deckIds = new Set(getDeckIds());
+  const previousIds = new Set(saved.deckIds);
+  const addedIds = [...deckIds].filter((id) => !previousIds.has(id));
+  const queues = {};
+  for (const [key, remainingIds] of Object.entries(saved.queues)) {
+    if (!Array.isArray(remainingIds)) {
+      throw new Error("Saved review queue format is invalid.");
+    }
+    // Each list filters newly added IDs when it is restored.
+    queues[key] = [...new Set([...remainingIds.filter((id) => deckIds.has(id)), ...addedIds])];
+  }
+  return queues;
+}
+
+function restorePersistentQueue() {
+  const unusedIds = reconcilePersistentQueues()[getQueueFilterKey()];
   if (!Array.isArray(unusedIds)) return null;
 
   const unusedIdSet = new Set(unusedIds);
@@ -617,6 +634,7 @@ function saveToken() {
 
   localStorage.setItem(STORAGE_TOKEN_KEY, token);
   setStatus("Token saved locally in your browser.", "ok");
+  syncIfStale();
 }
 
 function clearToken() {
@@ -657,21 +675,30 @@ function loadDeckCache() {
   return payload;
 }
 
+function syncIfStale() {
+  if (document.visibilityState === "hidden" || !el.apiToken.value.trim() || state.syncInProgress) return;
+  const today = formatCacheDate(new Date());
+  if (state.lastAutoSyncDay === today
+    || (state.lastSyncedAt && formatCacheDate(new Date(state.lastSyncedAt)) === today)) return;
+  state.lastAutoSyncDay = today;
+  return loadFromApi();
+}
+
 async function loadFromApi() {
+  if (state.syncInProgress) return;
   const token = el.apiToken.value.trim();
   if (!token) {
     setStatus("Please set your API token first.", "warn");
     return;
   }
 
+  state.syncInProgress = true;
   setStatus("Loading user profile...");
 
   try {
     const headers = getHeaders(token);
     const user = await fetchJson(`${API_BASE}/user`, headers);
     const currentLevel = user.data.level;
-    el.maxLevel.value = String(currentLevel);
-    el.maxLevel.setAttribute("max", currentLevel);
 
     setStatus("Loading started assignments (kanji + vocabulary)...");
     const assignments = await fetchAllPages(
@@ -680,46 +707,63 @@ async function loadFromApi() {
     );
 
     const startedIds = new Set(assignments.map((a) => a.data.subject_id));
-    if (startedIds.size === 0) {
-      state.deck = [];
-      applyFilters();
-      clearCardView("No started kanji/vocabulary found.");
-      setStatus("Loaded 0 started items.", "warn");
-      return;
-    }
-
     setStatus("Loading subjects and building deck...");
-    const subjects = await fetchAllPages(`${API_BASE}/subjects?types=kanji,vocabulary&hidden=false`, headers);
+    const subjects = startedIds.size > 0
+      ? await fetchAllPages(`${API_BASE}/subjects?types=kanji,vocabulary&hidden=false`, headers)
+      : [];
 
     const deck = subjects
       .filter((subject) => startedIds.has(subject.id))
       .map(mapSubjectToCard)
       .sort((a, b) => a.level - b.level || a.id - b.id);
 
-    state.deck = deck;
-    state.cacheLabel = new Date().toLocaleString();
-    applyFilters();
-    clearCardView();
+    if (el.gradeFilter.value !== "all" && !state.kanjiGrades) {
+      await loadKanjiGrades();
+    }
+    if (el.apiToken.value.trim() !== token) {
+      throw new Error("API token changed during sync. Please reload the deck again.");
+    }
 
     saveDeckCache(deck, {
       username: user.data.username,
       currentLevel,
+      minLevel: el.minLevel.value,
+      maxLevel: state.lastSyncedAt ? el.maxLevel.value : String(currentLevel),
     });
 
+    const currentCardId = state.currentCard?.id;
+    if (!state.lastSyncedAt) el.maxLevel.value = String(currentLevel);
+    el.maxLevel.setAttribute("max", currentLevel);
+    state.deck = deck;
+    state.lastSyncedAt = new Date().toISOString();
+    state.cacheLabel = formatCacheDate(new Date(state.lastSyncedAt));
+    applyFilters();
+    const currentIndex = state.filteredDeck.findIndex((card) => card.id === currentCardId);
+    if (currentIndex !== -1) {
+      state.currentIndex = currentIndex;
+    } else {
+      clearCardView(deck.length === 0 ? "No started kanji/vocabulary found." : undefined);
+    }
+    updateDeckCount();
+
     setStatus(
-      `Loaded ${deck.length} started items for ${user.data.username} (level ${currentLevel}).`,
+      `Synced ${deck.length} started items for ${user.data.username} (level ${currentLevel}). Review progress preserved.`,
       "ok",
     );
   } catch (error) {
     setStatus(`Failed to load from API: ${error.message}`, "err");
+  } finally {
+    state.syncInProgress = false;
   }
 }
 
 function restoreCachedDeck(cached) {
   state.deck = cached.deck;
-  state.cacheLabel = new Date(cached.savedAt).toLocaleString();
+  state.lastSyncedAt = cached.savedAt;
+  state.cacheLabel = formatCacheDate(new Date(cached.savedAt));
   if (cached.metadata?.currentLevel) {
-    el.maxLevel.value = String(cached.metadata.currentLevel);
+    el.minLevel.value = String(cached.metadata.minLevel ?? 1);
+    el.maxLevel.value = String(cached.metadata.maxLevel ?? cached.metadata.currentLevel);
     el.maxLevel.setAttribute("max", cached.metadata.currentLevel);
   }
   applyFilters();
@@ -727,6 +771,8 @@ function restoreCachedDeck(cached) {
 }
 
 function attachEvents() {
+  document.addEventListener("visibilitychange", syncIfStale);
+  window.addEventListener("focus", syncIfStale);
   el.saveTokenBtn.addEventListener("click", saveToken);
   el.clearTokenBtn.addEventListener("click", clearToken);
   el.useCacheBtn.addEventListener("click", resetCurrentQueue);
@@ -786,8 +832,9 @@ function init() {
   } catch {
     applyFilters();
     clearCardView();
-    el.cacheInfo.textContent = "No list loaded yet \u2014 click Reload Deck to start.";
+    el.cacheInfo.textContent = "No list loaded yet \u2014 open Setup to reload the deck.";
   }
+  syncIfStale();
 }
 
 init();
